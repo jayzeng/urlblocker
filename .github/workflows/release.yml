@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Package extension
+        id: package
+        run: |
+          VERSION=$(python - <<'PY'
+          import json
+          with open("manifest.json", "r", encoding="utf-8") as f:
+              manifest = json.load(f)
+          print(manifest.get("version", "0.0.0"))
+          PY
+          )
+          ZIP_NAME="urlblocker-v${VERSION}.zip"
+          zip -r "$ZIP_NAME" \
+            background.js \
+            content.js \
+            manifest.json \
+            make-icons.js \
+            test-matching.js \
+            blocked \
+            dashboard \
+            icons \
+            options \
+            popup \
+            shared \
+            AGENTS.md \
+            CLAUDE.md \
+            README.md
+          echo "zip_name=$ZIP_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.package.outputs.zip_name }}
