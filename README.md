@@ -12,6 +12,14 @@ A Chrome extension for blocking websites by URL, domain, regex, or keyword — w
 
 No build step required.
 
+## Install From Release (ZIP)
+
+1. Download the latest release ZIP from GitHub Releases.
+2. Unzip it to a folder.
+3. Open `chrome://extensions`
+4. Enable **Developer Mode** (top right)
+5. Click **Load unpacked** and select the unzipped folder.
+
 ---
 
 ## Features
