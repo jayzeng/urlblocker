@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Blocked — URL Blocker</title>
+  <link rel="stylesheet" href="blocked.css">
+</head>
+<body>
+  <div class="card">
+    <div class="card-header">
+      <div class="shield-icon">🛡️</div>
+      <div>
+        <h1>Page Blocked</h1>
+        <p>This URL was blocked by URL Blocker.</p>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div class="info-row">
+        <label>Blocked URL</label>
+        <div class="value" id="blocked-url">—</div>
+      </div>
+
+      <div class="info-row">
+        <label>Rule Type</label>
+        <span class="badge" id="rule-type">—</span>
+      </div>
+
+      <div class="info-row">
+        <label>Pattern</label>
+        <div class="value" id="rule-pattern">—</div>
+      </div>
+
+      <div class="info-row" id="label-row" style="display:none">
+        <label>Label</label>
+        <span class="label-pill" id="rule-label">—</span>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="card-footer">
+      <button class="btn btn-primary" id="go-back">← Go Back</button>
+      <button class="btn btn-ghost" id="close-tab">Close Tab</button>
+    </div>
+
+    <!-- Exception Section — shown by JS when exceptions are enabled -->
+    <div id="exception-section" style="display:none">
+      <hr class="divider" style="margin:0">
+      <div class="exc-panel">
+        <!-- Step 1: Request button -->
+        <div id="exc-step-request">
+          <p class="exc-hint">Need access? Request a temporary exception from a parent.</p>
+          <button class="btn btn-ghost btn-exception" id="btn-request-exception">Request Exception</button>
+        </div>
+
+        <!-- Step 2: Duration picker -->
+        <div id="exc-step-duration" style="display:none">
+          <p class="exc-label">How long do you need access?</p>
+          <div class="duration-buttons" id="duration-buttons"></div>
+          <button class="btn btn-ghost btn-sm exc-back-btn" id="exc-back-to-request">← Back</button>
+        </div>
+
+        <!-- Step 3: Challenge -->
+        <div id="exc-step-challenge" style="display:none">
+          <p class="exc-label">Parent verification required</p>
+          <div id="exc-challenge-area"></div>
+        </div>
+
+        <!-- Step 4: Success countdown -->
+        <div id="exc-step-success" style="display:none">
+          <div class="exc-success">
+            <span class="exc-success-icon">✓</span>
+            <p id="exc-countdown-msg">Access granted — redirecting in 3…</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../shared/utils.js"></script>
+  <script src="../shared/db.js"></script>
+  <script src="blocked.js"></script>
+</body>
+</html>

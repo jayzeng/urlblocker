@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Blocker — Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+
+  <div class="page-header">
+    <span class="logo">🛡️</span>
+    <h1>URL Blocker</h1>
+    <span class="tagline">Manage rules &amp; settings</span>
+  </div>
+
+  <main>
+    <!-- ── Rules Section ───────────────────────────────────────── -->
+    <section class="section" id="section-rules">
+      <div class="section-header">
+        <span class="section-title">🚫 Block Rules</span>
+        <div class="actions-row">
+          <span class="protection-badge" id="rules-protection-badge" style="display:none">🔒 Protected</span>
+          <button class="btn btn-primary btn-sm" id="btn-add-rule">+ Add Rule</button>
+        </div>
+      </div>
+      <div class="section-body" style="padding:0">
+        <div id="rules-challenge-area"></div>
+        <table class="rules-table" id="rules-table">
+          <thead>
+            <tr>
+              <th class="col-type">Type</th>
+              <th>Pattern / Label</th>
+              <th class="col-toggle">On</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="rules-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="rules-empty" style="display:none">
+          <div class="icon">📋</div>
+          <p>No block rules yet. Add one to get started.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── General Settings ────────────────────────────────────── -->
+    <section class="section" id="section-general">
+      <div class="section-header">
+        <span class="section-title">⚙️ General Settings</span>
+      </div>
+      <div class="section-body">
+        <div class="toggle-row">
+          <div class="label-group">
+            <strong>Extension Enabled</strong>
+            <small>Block URLs matching your rules.</small>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="toggle-extension">
+            <span class="track"></span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Exceptions Settings ────────────────────────────────────── -->
+    <section class="section" id="section-exceptions">
+      <div class="section-header">
+        <span class="section-title">🔓 Exception Requests</span>
+      </div>
+      <div class="section-body">
+        <div class="toggle-row">
+          <div class="label-group">
+            <strong>Enable Exception Requests</strong>
+            <small>Show a "Request Exception" button on the blocked page so children can ask for temporary access.</small>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="toggle-exceptions">
+            <span class="track"></span>
+          </label>
+        </div>
+
+        <div id="exceptions-options" style="display:none">
+          <div class="toggle-row">
+            <div class="label-group">
+              <strong>Allowed Durations</strong>
+              <small>Which duration options to offer when requesting an exception.</small>
+            </div>
+          </div>
+          <div class="duration-checkbox-list" id="duration-checkbox-list">
+            <label class="duration-check-item">
+              <input type="checkbox" class="duration-check" data-minutes="5"> 5 min
+            </label>
+            <label class="duration-check-item">
+              <input type="checkbox" class="duration-check" data-minutes="15"> 15 min
+            </label>
+            <label class="duration-check-item">
+              <input type="checkbox" class="duration-check" data-minutes="30"> 30 min
+            </label>
+            <label class="duration-check-item">
+              <input type="checkbox" class="duration-check" data-minutes="60"> 1 hour
+            </label>
+            <label class="duration-check-item">
+              <input type="checkbox" class="duration-check" data-minutes="120"> 2 hours
+            </label>
+          </div>
+          <p class="exc-note">Challenge uses the same passcode / math settings as Protection Mode.</p>
+          <div class="toggle-row" style="border:none;padding-bottom:0">
+            <div></div>
+            <a id="link-dashboard" href="#" class="btn btn-secondary btn-sm" target="_blank">View Exception History →</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Protection Settings ─────────────────────────────────── -->
+    <section class="section" id="section-protection">
+      <div class="section-header">
+        <span class="section-title">🔒 Protection Mode</span>
+        <span class="protection-badge" id="protection-status-badge" style="display:none">Active</span>
+      </div>
+      <div class="section-body">
+        <div id="protection-challenge-area"></div>
+
+        <div class="toggle-row">
+          <div class="label-group">
+            <strong>Enable Protection</strong>
+            <small>Require a challenge before modifying block rules.</small>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="toggle-protection">
+            <span class="track"></span>
+          </label>
+        </div>
+
+        <div id="protection-options" style="display:none">
+          <div class="toggle-row">
+            <div class="label-group">
+              <strong>Challenge Type</strong>
+              <small>Method required to pass the protection challenge.</small>
+            </div>
+            <select id="select-challenge-type" class="form-control" style="width:auto">
+              <option value="passcode">Passcode (PIN)</option>
+              <option value="math">Math Problem</option>
+            </select>
+          </div>
+
+          <div id="math-difficulty-row" class="toggle-row" style="display:none">
+            <div class="label-group">
+              <strong>Math Difficulty</strong>
+              <small>Difficulty of the math challenge problems.</small>
+            </div>
+            <select id="select-math-difficulty" class="form-control" style="width:auto">
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+
+          <!-- PIN management -->
+          <div class="pin-section" id="pin-section">
+            <h4>Passcode Management</h4>
+            <div id="pin-challenge-area"></div>
+            <div class="inline-form" id="pin-form">
+              <div class="form-group">
+                <label id="new-pin-label">New Passcode</label>
+                <input type="password" id="input-new-pin" class="form-control" placeholder="Enter passcode…" autocomplete="new-password">
+              </div>
+              <div class="form-group">
+                <label>Confirm</label>
+                <input type="password" id="input-confirm-pin" class="form-control" placeholder="Confirm…" autocomplete="new-password">
+              </div>
+              <button class="btn btn-secondary btn-sm" id="btn-save-pin" style="margin-bottom:1px">Save</button>
+            </div>
+            <div class="form-error" id="pin-error"></div>
+            <div class="success-msg" id="pin-success">✓ Passcode saved.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ── Add / Edit Rule Dialog ────────────────────────────────── -->
+  <dialog id="rule-dialog">
+    <div class="dialog-header">
+      <h2 id="dialog-title">Add Rule</h2>
+      <button class="dialog-close" id="dialog-close-btn" title="Close">✕</button>
+    </div>
+    <div class="dialog-body">
+      <div class="form-group">
+        <label for="rule-type-select">Rule Type</label>
+        <select id="rule-type-select" class="form-control">
+          <option value="exact">Exact URL</option>
+          <option value="domain">Domain</option>
+          <option value="regex">Regex</option>
+          <option value="keyword">Keyword</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="rule-pattern-input">Pattern</label>
+        <input type="text" id="rule-pattern-input" class="form-control" placeholder="">
+        <div class="form-hint" id="rule-pattern-hint"></div>
+        <div class="form-error" id="rule-pattern-error"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="rule-label-input">Label <span class="text-muted">(optional)</span></label>
+        <input type="text" id="rule-label-input" class="form-control" placeholder="e.g. Social media, Work block…">
+      </div>
+
+      <div class="form-group">
+        <label class="toggle" style="flex-direction:row;align-items:center;gap:10px;width:auto">
+          <input type="checkbox" id="rule-enabled-check" checked>
+          <span class="track" style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0"></span>
+          <span style="font-size:0.875rem;font-weight:500;color:var(--gray-700)">Enabled</span>
+        </label>
+      </div>
+    </div>
+    <div class="dialog-footer">
+      <button class="btn btn-secondary" id="dialog-cancel-btn">Cancel</button>
+      <button class="btn btn-primary" id="dialog-save-btn">Save Rule</button>
+    </div>
+  </dialog>
+
+  <script src="../shared/utils.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

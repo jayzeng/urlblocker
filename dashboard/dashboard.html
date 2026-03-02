@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Blocker — Exception History</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+  <div class="page-header">
+    <span class="logo">🛡️</span>
+    <h1>URL Blocker</h1>
+    <span class="tagline">Exception History</span>
+  </div>
+
+  <main>
+    <!-- ── Filters ──────────────────────────────────────────────── -->
+    <section class="section" id="section-filters">
+      <div class="section-header">
+        <span class="section-title">🔍 Filters</span>
+        <button class="btn btn-secondary btn-sm" id="btn-reset-filters">Reset</button>
+      </div>
+      <div class="section-body filters-body">
+        <div class="filter-group">
+          <label for="filter-domain">Domain</label>
+          <input type="text" id="filter-domain" class="form-control" placeholder="e.g. youtube.com">
+        </div>
+        <div class="filter-group">
+          <label for="filter-date-from">From</label>
+          <input type="date" id="filter-date-from" class="form-control">
+        </div>
+        <div class="filter-group">
+          <label for="filter-date-to">To</label>
+          <input type="date" id="filter-date-to" class="form-control">
+        </div>
+        <div class="filter-group filter-group-toggle">
+          <label class="toggle-label">
+            <input type="checkbox" id="filter-active-only">
+            <span>Active only</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Exception Table ─────────────────────────────────────── -->
+    <section class="section" id="section-table">
+      <div class="section-header">
+        <span class="section-title">📋 Exception Log</span>
+        <div class="actions-row">
+          <span class="count-badge" id="count-badge">0 records</span>
+          <button class="btn btn-secondary btn-sm" id="btn-export-csv">Export CSV</button>
+          <button class="btn btn-danger btn-sm" id="btn-clear-history">Clear History</button>
+        </div>
+      </div>
+      <div id="clear-challenge-area"></div>
+      <div class="section-body" style="padding:0">
+        <div class="empty-state" id="table-empty" style="display:none">
+          <div class="icon">📭</div>
+          <p id="empty-msg">No exception records yet.</p>
+        </div>
+        <div class="table-wrapper" id="table-wrapper">
+          <table class="exc-table" id="exc-table">
+            <thead>
+              <tr>
+                <th>Date / Time</th>
+                <th>URL</th>
+                <th>Domain</th>
+                <th>Rule</th>
+                <th>Duration</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="exc-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="../shared/utils.js"></script>
+  <script src="../shared/db.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>

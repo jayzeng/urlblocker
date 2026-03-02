@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Blocker</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <span class="logo">🛡️</span>
+      <span>URL Blocker</span>
+    </div>
+    <div>
+      <div class="status-dot" id="status-dot"></div>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- Challenge panel (shown when protection is on and action requires it) -->
+    <div class="challenge-panel" id="challenge-panel">
+      <h3 id="challenge-title">Protected Action</h3>
+      <p class="sub" id="challenge-sub">Enter your passcode to continue.</p>
+      <div class="challenge-question" id="challenge-question" style="display:none"></div>
+      <div class="input-row">
+        <input
+          type="password"
+          class="challenge-input"
+          id="challenge-input"
+          placeholder="Enter answer…"
+          autocomplete="off"
+        >
+        <button class="btn-sm" id="challenge-submit">OK</button>
+      </div>
+      <div class="challenge-error" id="challenge-error"></div>
+      <button class="challenge-cancel" id="challenge-cancel">Cancel</button>
+    </div>
+
+    <!-- Extension OFF state -->
+    <div id="state-off" class="disabled-state" style="display:none">
+      <p>URL Blocker is currently <strong>disabled</strong>.</p>
+      <button class="btn btn-success" id="btn-turn-on">
+        <span class="btn-icon">▶</span>
+        <span class="btn-text">Turn On</span>
+      </button>
+    </div>
+
+    <!-- Extension ON state -->
+    <div id="state-on" style="display:none">
+      <div class="url-preview">
+        <div class="label">Current Tab</div>
+        <div class="url-text" id="current-url">Loading…</div>
+      </div>
+
+      <div class="action-list">
+        <button class="btn btn-primary" id="btn-block-url">
+          <span class="btn-icon">🚫</span>
+          <span class="btn-text">Block this URL</span>
+          <span class="btn-lock" id="lock-block-url" style="display:none">🔒</span>
+        </button>
+
+        <button class="btn btn-primary" id="btn-block-domain">
+          <span class="btn-icon">🌐</span>
+          <span class="btn-text">Block this domain</span>
+          <span class="btn-lock" id="lock-block-domain" style="display:none">🔒</span>
+        </button>
+
+        <hr class="divider">
+
+        <button class="btn" id="btn-settings">
+          <span class="btn-icon">⚙️</span>
+          <span class="btn-text">Open Settings</span>
+          <span class="btn-lock" id="lock-settings" style="display:none">🔒</span>
+        </button>
+
+        <button class="btn btn-danger" id="btn-disable">
+          <span class="btn-icon">⏸</span>
+          <span class="btn-text">Disable Extension</span>
+          <span class="btn-lock" id="lock-disable" style="display:none">🔒</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a id="settings-link">Manage rules</a>
+  </div>
+
+  <script src="../shared/utils.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
