@@ -1,10 +1,10 @@
 # URL Blocker
 
-A Chrome extension for blocking websites by URL, domain, regex, or keyword — with parental controls, a challenge system to prevent easy bypassing, and a temporary exception flow so children can request supervised access.
+A Chrome extension for blocking websites by URL, domain, regex, or keyword. Includes parental controls, a challenge system to prevent easy bypassing, and a temporary exception flow so children can request supervised access.
 
 ---
 
-## Installation
+## Installation (Unpacked)
 
 1. Open `chrome://extensions`
 2. Enable **Developer Mode** (top right)
@@ -57,6 +57,14 @@ Parents can review all granted exceptions — domain, duration, timestamp, and c
 - Enable Protection Mode and set a passcode or math challenge
 - Enable Exception Requests and choose which durations to offer
 - Open the Exception History dashboard
+
+---
+
+## Release Workflow
+
+Publishing a release is automated through GitHub Actions:
+- Run the “Tag Release” workflow to create a `vX.Y.Z` tag from `manifest.json`.
+- The “Release” workflow packages a ZIP and attaches it to the GitHub Release.
 
 ---
 
