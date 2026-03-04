@@ -31,6 +31,7 @@
   const toggleExceptions    = document.getElementById("toggle-exceptions");
   const exceptionsOptions   = document.getElementById("exceptions-options");
   const durationCheckList   = document.getElementById("duration-checkbox-list");
+  const toggleWordChallenge = document.getElementById("toggle-word-challenge");
   const linkDashboard       = document.getElementById("link-dashboard");
 
   const toggleExtension = document.getElementById("toggle-extension");
@@ -194,6 +195,7 @@
       chk.checked = allowed.includes(Number(chk.dataset.minutes));
     });
 
+    toggleWordChallenge.checked = !!(ex.wordChallenge && ex.wordChallenge.enabled);
     linkDashboard.href = chrome.runtime.getURL("dashboard/dashboard.html");
   }
 
@@ -373,6 +375,12 @@
       if (chk.checked) checked.push(Number(chk.dataset.minutes));
     });
     settings.exceptions.allowedDurations = checked;
+    await save();
+  });
+
+  toggleWordChallenge.addEventListener("change", async () => {
+    if (!settings.exceptions.wordChallenge) settings.exceptions.wordChallenge = {};
+    settings.exceptions.wordChallenge.enabled = toggleWordChallenge.checked;
     await save();
   });
 
