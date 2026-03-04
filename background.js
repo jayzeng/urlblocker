@@ -29,14 +29,16 @@ async function loadCache() {
 }
 
 // Initialize on service worker start
-loadCache();
+loadCache().then(syncDNRRules);
 
 // Keep cache fresh when storage changes
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
-  if (changes.rules) cachedRules = changes.rules.newValue || [];
-  if (changes.settings) cachedSettings = changes.settings.newValue || DEFAULT_SETTINGS;
-  if (changes.activeExceptions) cachedActiveExceptions = changes.activeExceptions.newValue || {};
+  let needsSync = false;
+  if (changes.rules) { cachedRules = changes.rules.newValue || []; needsSync = true; }
+  if (changes.settings) { cachedSettings = changes.settings.newValue || DEFAULT_SETTINGS; needsSync = true; }
+  if (changes.activeExceptions) { cachedActiveExceptions = changes.activeExceptions.newValue || {}; needsSync = true; }
+  if (needsSync) syncDNRRules();
 });
 
 // Normalize URL for exact matching
@@ -105,9 +107,63 @@ function hasActiveException(ruleId) {
   return exc && exc.expiresAt > Date.now();
 }
 
-// Intercept navigations
+// --- declarativeNetRequest: block embedded/iframe content from blocked domains ---
+
+function ruleToDNRCondition(rule) {
+  const subframeTypes = ["sub_frame", "media", "object"];
+  switch (rule.type) {
+    case "domain": {
+      const host = rule.pattern.toLowerCase().trim().replace(/^www\./, "");
+      return { requestDomains: [host, "www." + host], resourceTypes: subframeTypes };
+    }
+    case "regex": {
+      try { new RegExp(rule.pattern); } catch { return null; }
+      return { regexFilter: rule.pattern, isUrlFilterCaseSensitive: false, resourceTypes: subframeTypes };
+    }
+    case "keyword": {
+      // Escape regex metacharacters for literal substring matching
+      const escaped = rule.pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+      return { regexFilter: escaped, isUrlFilterCaseSensitive: false, resourceTypes: subframeTypes };
+    }
+    case "exact": {
+      try {
+        return { urlFilter: `|${new URL(rule.pattern).href}|`, resourceTypes: subframeTypes };
+      } catch { return null; }
+    }
+    default: return null;
+  }
+}
+
+async function syncDNRRules() {
+  if (!chrome.declarativeNetRequest?.updateDynamicRules) return;
+  const settings = cachedSettings || DEFAULT_SETTINGS;
+  const now = Date.now();
+
+  const excepted = new Set(
+    Object.entries(cachedActiveExceptions)
+      .filter(([, e]) => e.expiresAt > now)
+      .map(([id]) => id)
+  );
+
+  const newRules = [];
+  let dnrId = 1;
+  if (settings.extensionEnabled) {
+    for (const rule of cachedRules) {
+      if (!rule.enabled || excepted.has(rule.id)) continue;
+      const condition = ruleToDNRCondition(rule);
+      if (condition) newRules.push({ id: dnrId++, priority: 1, action: { type: "block" }, condition });
+    }
+  }
+
+  const existing = await chrome.declarativeNetRequest.getDynamicRules();
+  await chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: existing.map(r => r.id),
+    addRules: newRules
+  });
+}
+
+// Intercept top-level navigations only (sub-frames handled by declarativeNetRequest)
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
-  // Only intercept top-level navigations in real tabs
   if (details.frameId !== 0 || details.tabId < 0) return;
 
   const url = details.url;
@@ -175,6 +231,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     }
     cachedActiveExceptions = cleaned;
     chrome.storage.local.set({ activeExceptions: cachedActiveExceptions });
+    syncDNRRules();
     sendResponse({ ok: true });
     return true;
   }
@@ -187,13 +244,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     }
     cachedActiveExceptions = cleaned;
     chrome.storage.local.set({ activeExceptions: cachedActiveExceptions });
+    syncDNRRules();
     sendResponse({ ok: true });
     return true;
   }
 });
 
 // Refresh cache when service worker wakes
-chrome.runtime.onStartup.addListener(loadCache);
+chrome.runtime.onStartup.addListener(() => loadCache().then(syncDNRRules));
 chrome.runtime.onInstalled.addListener(async () => {
   await loadCache();
   // Set defaults if first install
@@ -204,4 +262,5 @@ chrome.runtime.onInstalled.addListener(async () => {
     cachedRules = [];
     cachedActiveExceptions = {};
   }
+  await syncDNRRules();
 });
