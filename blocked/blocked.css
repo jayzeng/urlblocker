@@ -331,6 +331,59 @@ body {
   line-height: 1;
 }
 
+.wc-speak-btn {
+  display: block;
+  margin: 0 auto 0.85rem;
+  min-width: 7.25rem;
+  border-color: #c7d2fe;
+  color: #4338ca;
+  background: #eef2ff;
+}
+
+.wc-speak-btn:hover {
+  background: #e0e7ff;
+  border-color: #a5b4fc;
+  color: #3730a3;
+}
+
+.wc-speak-wrap {
+  position: relative;
+  width: max-content;
+  margin: 0 auto;
+}
+
+.wc-speak-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.4rem);
+  transform: translate(-50%, 6px);
+  background: #111827;
+  color: #fff;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  border-radius: 999px;
+  padding: 0.35rem 0.62rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.wc-speak-hint::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #111827;
+}
+
+.wc-speak-hint-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 .wc-word {
   display: flex;
   gap: 0.375rem;
@@ -355,30 +408,34 @@ body {
 }
 
 .wc-blank {
-  background: white;
-  border: 2.5px dashed var(--gray-300);
-  color: var(--gray-300);
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid var(--gray-400);
+  border-radius: 0;
+  color: transparent;
   font-size: 1.25rem;
 }
 
 .wc-blank.wc-filled {
-  background: #ede9fe;
-  border: 2.5px solid #6366f1;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid #6366f1;
+  border-radius: 0;
   color: #4f46e5;
   font-size: 1.5rem;
 }
 
 .wc-word-correct .wc-blank,
 .wc-word-correct .wc-blank.wc-filled {
-  background: #dcfce7;
-  border-color: #4ade80;
+  background: transparent;
+  border-bottom-color: #4ade80;
   color: #16a34a;
 }
 
 .wc-word-wrong .wc-blank,
 .wc-word-wrong .wc-blank.wc-filled {
-  background: #fee2e2;
-  border-color: #f87171;
+  background: transparent;
+  border-bottom-color: #f87171;
   color: #dc2626;
   animation: wc-shake 0.35s ease;
 }

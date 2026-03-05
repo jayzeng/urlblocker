@@ -1,0 +1,6 @@
+# Packed extension output
+dist/
+
+# Signing key is stored in the PARENT directory (../urlblocker.pem), not here.
+# That keeps it out of the packed .crx. Back it up separately — losing it
+# means you cannot push updates to devices with the policy already installed.

@@ -58,6 +58,10 @@
   let selectedDurationMs = 0;
 
   function showStep(id) {
+    if (id !== "exc-step-word") {
+      wcStopSpeaking();
+      wcHideSpeakHint();
+    }
     [stepRequest, stepDuration, stepChallenge, stepWord, stepSuccess].forEach(el => {
       el.style.display = el.id === id ? "" : "none";
     });
@@ -239,6 +243,7 @@
 
   // ── Word Challenge ────────────────────────────────────────────────────────
   const WC_WORDS = [
+    // 4-letter words
     { word: "ball",  emoji: "⚽" }, { word: "fish",  emoji: "🐟" },
     { word: "bird",  emoji: "🐦" }, { word: "frog",  emoji: "🐸" },
     { word: "cake",  emoji: "🎂" }, { word: "milk",  emoji: "🥛" },
@@ -249,6 +254,22 @@
     { word: "door",  emoji: "🚪" }, { word: "play",  emoji: "🎮" },
     { word: "jump",  emoji: "🦘" }, { word: "swim",  emoji: "🏊" },
     { word: "ship",  emoji: "🚢" }, { word: "drum",  emoji: "🥁" },
+    { word: "lion",  emoji: "🦁" }, { word: "wolf",  emoji: "🐺" },
+    { word: "swan",  emoji: "🦢" }, { word: "crab",  emoji: "🦀" },
+    { word: "kite",  emoji: "🪁" }, { word: "snow",  emoji: "❄️" },
+    { word: "boat",  emoji: "⛵" }, { word: "worm",  emoji: "🪱" },
+    { word: "deer",  emoji: "🦌" }, { word: "sock",  emoji: "🧦" },
+    { word: "tent",  emoji: "⛺" }, { word: "bell",  emoji: "🔔" },
+    { word: "leaf",  emoji: "🍃" }, { word: "moon",  emoji: "🌙" },
+    { word: "corn",  emoji: "🌽" }, { word: "plum",  emoji: "🍑" },
+    { word: "ring",  emoji: "💍" }, { word: "nest",  emoji: "🪹" },
+    { word: "lamb",  emoji: "🐑" }, { word: "seed",  emoji: "🌱" },
+    { word: "rock",  emoji: "🪨" }, { word: "mint",  emoji: "🌿" },
+    { word: "flag",  emoji: "🚩" }, { word: "hive",  emoji: "🐝" },
+    { word: "toad",  emoji: "🐸" }, { word: "colt",  emoji: "🐴" },
+    { word: "fawn",  emoji: "🦌" }, { word: "claw",  emoji: "🦞" },
+    { word: "glow",  emoji: "✨" }, { word: "drip",  emoji: "💧" },
+    // 5-letter words
     { word: "cloud", emoji: "☁️" }, { word: "house", emoji: "🏠" },
     { word: "mouse", emoji: "🐭" }, { word: "horse", emoji: "🐴" },
     { word: "apple", emoji: "🍎" }, { word: "smile", emoji: "😊" },
@@ -259,19 +280,107 @@
     { word: "sleep", emoji: "😴" }, { word: "slide", emoji: "🛝" },
     { word: "clown", emoji: "🤡" }, { word: "flame", emoji: "🔥" },
     { word: "robot", emoji: "🤖" }, { word: "grape", emoji: "🍇" },
+    { word: "tiger", emoji: "🐯" }, { word: "panda", emoji: "🐼" },
+    { word: "zebra", emoji: "🦓" }, { word: "koala", emoji: "🐨" },
+    { word: "eagle", emoji: "🦅" }, { word: "shark", emoji: "🦈" },
+    { word: "whale", emoji: "🐋" }, { word: "train", emoji: "🚂" },
+    { word: "truck", emoji: "🚛" }, { word: "brush", emoji: "🪥" },
+    { word: "chair", emoji: "🪑" }, { word: "piano", emoji: "🎹" },
+    { word: "sheep", emoji: "🐑" }, { word: "puppy", emoji: "🐶" },
+    { word: "kitty", emoji: "🐱" }, { word: "chick", emoji: "🐥" },
+    { word: "tulip", emoji: "🌷" }, { word: "daisy", emoji: "🌼" },
+    { word: "ocean", emoji: "🌊" }, { word: "beach", emoji: "🏖️" },
+    { word: "storm", emoji: "⛈️" }, { word: "plant", emoji: "🌱" },
+    { word: "heart", emoji: "❤️" }, { word: "magic", emoji: "🪄" },
+    { word: "broom", emoji: "🧹" }, { word: "spoon", emoji: "🥄" },
+    { word: "clock", emoji: "🕐" }, { word: "torch", emoji: "🔦" },
+    { word: "globe", emoji: "🌍" }, { word: "snack", emoji: "🍿" },
+    { word: "lemon", emoji: "🍋" }, { word: "peach", emoji: "🍑" },
+    { word: "mango", emoji: "🥭" }, { word: "flute", emoji: "🎵" },
+    { word: "scout", emoji: "🔭" }, { word: "quilt", emoji: "🛏️" },
+    { word: "stork", emoji: "🦢" }, { word: "blaze", emoji: "🔥" },
+    { word: "drool", emoji: "🤤" }, { word: "shiny", emoji: "✨" },
   ];
 
   let wcStreak = 0;
   let wcCurrentWord = null;
   let wcBlankIndices = null;
   let wcFilled = [];
-  let wcUsedWords = new Set();
+  let wcQueue = [];
+  let wcSpeakHintTimer = null;
+  let wcSpeakHintHideTimer = null;
+  let wcHasSpokenCurrentWord = false;
+  let wcSpeakHintShown = false;
+  let wcKeysBeforeSpeak = 0;
+  const wcSpeechSupported = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+
+  function wcStopSpeaking() {
+    if (!wcSpeechSupported) return;
+    window.speechSynthesis.cancel();
+  }
+
+  function wcClearSpeakHintTimers() {
+    if (wcSpeakHintTimer) {
+      clearTimeout(wcSpeakHintTimer);
+      wcSpeakHintTimer = null;
+    }
+    if (wcSpeakHintHideTimer) {
+      clearTimeout(wcSpeakHintHideTimer);
+      wcSpeakHintHideTimer = null;
+    }
+  }
+
+  function wcHideSpeakHint() {
+    const hintEl = document.getElementById("wc-speak-hint");
+    if (hintEl) hintEl.classList.remove("wc-speak-hint-visible");
+    wcClearSpeakHintTimers();
+  }
+
+  function wcShowSpeakHint() {
+    if (!wcSpeechSupported) return;
+    const hintEl = document.getElementById("wc-speak-hint");
+    if (!hintEl) return;
+    hintEl.classList.add("wc-speak-hint-visible");
+    wcSpeakHintShown = true;
+    if (wcSpeakHintHideTimer) clearTimeout(wcSpeakHintHideTimer);
+    wcSpeakHintHideTimer = setTimeout(() => {
+      hintEl.classList.remove("wc-speak-hint-visible");
+    }, 3600);
+  }
+
+  function wcScheduleSpeakHint() {
+    if (!wcSpeechSupported || wcHasSpokenCurrentWord || wcSpeakHintShown) return;
+    wcClearSpeakHintTimers();
+    wcSpeakHintTimer = setTimeout(() => {
+      wcShowSpeakHint();
+    }, 3200);
+  }
+
+  function wcSpeakCurrentWord() {
+    if (!wcSpeechSupported || !wcCurrentWord) return;
+    wcHasSpokenCurrentWord = true;
+    wcHideSpeakHint();
+    wcStopSpeaking();
+    const utterance = new SpeechSynthesisUtterance(wcCurrentWord.word);
+    utterance.lang = "en-US";
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function wcShuffle(arr) {
+    for (let pass = 0; pass < 3; pass++) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+    }
+    return arr;
+  }
 
   function wcPickWord() {
-    const available = WC_WORDS.filter(w => !wcUsedWords.has(w.word));
-    if (available.length === 0) wcUsedWords = new Set();
-    const pool = available.length > 0 ? available : WC_WORDS;
-    return pool[Math.floor(Math.random() * pool.length)];
+    if (wcQueue.length === 0) wcQueue = wcShuffle([...WC_WORDS]);
+    return wcQueue.pop();
   }
 
   function wcMakeBlanks(word) {
@@ -288,14 +397,20 @@
   function wcUpdateStars() {
     const s1 = document.getElementById("wc-star-1");
     const s2 = document.getElementById("wc-star-2");
+    const s3 = document.getElementById("wc-star-3");
     if (s1) s1.className = `wc-star ${wcStreak >= 1 ? "wc-star-lit" : "wc-star-dim"}`;
     if (s2) s2.className = `wc-star ${wcStreak >= 2 ? "wc-star-lit" : "wc-star-dim"}`;
+    if (s3) s3.className = `wc-star ${wcStreak >= 3 ? "wc-star-lit" : "wc-star-dim"}`;
   }
 
   function renderWCWord() {
+    wcStopSpeaking();
+    wcClearSpeakHintTimers();
+    wcHasSpokenCurrentWord = false;
+    wcSpeakHintShown = false;
+    wcKeysBeforeSpeak = 0;
     wcUpdateStars();
     wcCurrentWord = wcPickWord();
-    wcUsedWords.add(wcCurrentWord.word);
     wcBlankIndices = wcMakeBlanks(wcCurrentWord.word);
     wcFilled = Array(wcCurrentWord.word.length).fill(null);
 
@@ -307,6 +422,27 @@
     emojiEl.className = "wc-emoji";
     emojiEl.textContent = wcCurrentWord.emoji;
     gameEl.appendChild(emojiEl);
+
+    if (wcSpeechSupported) {
+      const speakWrap = document.createElement("div");
+      speakWrap.className = "wc-speak-wrap";
+
+      const speakBtn = document.createElement("button");
+      speakBtn.className = "btn btn-ghost btn-sm wc-speak-btn";
+      speakBtn.type = "button";
+      speakBtn.textContent = "🔊 Speak";
+      speakBtn.addEventListener("click", wcSpeakCurrentWord);
+      speakWrap.appendChild(speakBtn);
+
+      const hint = document.createElement("div");
+      hint.className = "wc-speak-hint";
+      hint.id = "wc-speak-hint";
+      hint.textContent = "Tap here to hear the word";
+      speakWrap.appendChild(hint);
+
+      gameEl.appendChild(speakWrap);
+      wcScheduleSpeakHint();
+    }
 
     // Letter tiles
     const wordEl = document.createElement("div");
@@ -346,6 +482,10 @@
   }
 
   function wcHandleKey(letter) {
+    if (wcSpeechSupported && !wcHasSpokenCurrentWord && !wcSpeakHintShown) {
+      wcKeysBeforeSpeak++;
+      if (wcKeysBeforeSpeak >= 2) wcShowSpeakHint();
+    }
     const blanks = [...wcBlankIndices].sort((a, b) => a - b);
     const next = blanks.find(i => wcFilled[i] === null);
     if (next === undefined) return;
@@ -388,7 +528,7 @@
       feedbackEl.className = "wc-feedback wc-correct";
       wcStreak++;
       wcUpdateStars();
-      if (wcStreak >= 2) {
+      if (wcStreak >= 3) {
         feedbackEl.textContent = "🎉 Amazing! You earned 5 minutes!";
         setTimeout(async () => {
           selectedDurationMs = 5 * 60 * 1000;
@@ -399,7 +539,7 @@
       }
     } else {
       wordEl.classList.add("wc-word-wrong");
-      feedbackEl.textContent = "✗ Not quite! Try a new word.";
+      feedbackEl.textContent = `✗ Not quite! It was "${word.toUpperCase()}". Try a new word!`;
       feedbackEl.className = "wc-feedback wc-wrong";
       wcStreak = 0;
       wcUpdateStars();

@@ -15,17 +15,42 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Read version
+      - name: Bump manifest version
         id: version
         run: |
           VERSION=$(python - <<'PY'
           import json
+          import re
+
           with open("manifest.json", "r", encoding="utf-8") as f:
               manifest = json.load(f)
-          print(manifest.get("version", "0.0.0"))
+
+          current = manifest.get("version", "0.0.0")
+          match = re.match(r"^(\d+)\.(\d+)\.(\d+)$", current)
+          if not match:
+              raise SystemExit(f"Unsupported manifest version format: {current}")
+
+          major, minor, patch = map(int, match.groups())
+          patch += 1
+          new_version = f"{major}.{minor}.{patch}"
+          manifest["version"] = new_version
+
+          with open("manifest.json", "w", encoding="utf-8") as f:
+              json.dump(manifest, f, indent=2)
+              f.write("\n")
+
+          print(new_version)
           PY
           )
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          git commit -m "Bump manifest version to v${{ steps.version.outputs.version }}"
+          git push origin HEAD
 
       - name: Create tag
         run: |
@@ -34,7 +59,5 @@ jobs:
             echo "Tag $TAG already exists."
             exit 1
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"
