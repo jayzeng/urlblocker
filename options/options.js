@@ -7,19 +7,8 @@
   let editingRuleId = null;  // null = adding new rule
 
   // ── Defaults ──────────────────────────────────────────────────────────────
-  const DEFAULT_SETTINGS = {
-    extensionEnabled: true,
-    protection: {
-      enabled: false,
-      challengeType: "passcode",
-      passcodeHash: null,
-      mathDifficulty: "easy"
-    },
-    exceptions: {
-      enabled: false,
-      allowedDurations: [5, 15, 30, 60, 120]
-    }
-  };
+  const DEFAULT_SETTINGS = getDefaultSettings();
+  const WORD_CHALLENGE_DEFAULTS = DEFAULT_SETTINGS.exceptions.wordChallenge;
 
   // ── DOM refs ──────────────────────────────────────────────────────────────
   const rulesTbody = document.getElementById("rules-tbody");
@@ -31,7 +20,11 @@
   const toggleExceptions    = document.getElementById("toggle-exceptions");
   const exceptionsOptions   = document.getElementById("exceptions-options");
   const durationCheckList   = document.getElementById("duration-checkbox-list");
+  const inputCustomDuration = document.getElementById("input-custom-duration");
+  const customDurationError = document.getElementById("custom-duration-error");
   const toggleWordChallenge = document.getElementById("toggle-word-challenge");
+  const inputWordRequiredCorrect = document.getElementById("input-word-required-correct");
+  const inputWordRewardMinutes = document.getElementById("input-word-reward-minutes");
   const linkDashboard       = document.getElementById("link-dashboard");
 
   const toggleExtension = document.getElementById("toggle-extension");
@@ -69,10 +62,7 @@
   async function load() {
     const data = await chrome.storage.local.get(["rules", "settings"]);
     rules = data.rules || [];
-    settings = data.settings || { ...DEFAULT_SETTINGS };
-    // Ensure sub-objects exist
-    if (!settings.protection) settings.protection = { ...DEFAULT_SETTINGS.protection };
-    if (!settings.exceptions) settings.exceptions = { ...DEFAULT_SETTINGS.exceptions };
+    settings = normalizeSettings(data.settings);
     render();
   }
 
@@ -194,8 +184,13 @@
     durationCheckList.querySelectorAll(".duration-check").forEach(chk => {
       chk.checked = allowed.includes(Number(chk.dataset.minutes));
     });
+    inputCustomDuration.value = ex.customDurationMinutes == null ? "" : String(ex.customDurationMinutes);
+    customDurationError.textContent = "";
 
-    toggleWordChallenge.checked = !!(ex.wordChallenge && ex.wordChallenge.enabled);
+    const wc = ex.wordChallenge || WORD_CHALLENGE_DEFAULTS;
+    toggleWordChallenge.checked = !!wc.enabled;
+    inputWordRequiredCorrect.value = wc.requiredCorrect;
+    inputWordRewardMinutes.value = wc.rewardMinutes;
     linkDashboard.href = chrome.runtime.getURL("dashboard/dashboard.html");
   }
 
@@ -378,9 +373,63 @@
     await save();
   });
 
+  inputCustomDuration.addEventListener("change", async () => {
+    const raw = inputCustomDuration.value.trim();
+    if (!raw) {
+      settings.exceptions.customDurationMinutes = null;
+      customDurationError.textContent = "";
+      await save();
+      return;
+    }
+    if (!/^\d+$/.test(raw)) {
+      customDurationError.textContent = "Custom duration must be a whole number.";
+      inputCustomDuration.value = settings.exceptions.customDurationMinutes == null
+        ? ""
+        : String(settings.exceptions.customDurationMinutes);
+      return;
+    }
+    const parsed = Number.parseInt(raw, 10);
+    if (parsed < 1 || parsed > 720) {
+      customDurationError.textContent = "Custom duration must be between 1 and 720 minutes.";
+      inputCustomDuration.value = settings.exceptions.customDurationMinutes == null
+        ? ""
+        : String(settings.exceptions.customDurationMinutes);
+      return;
+    }
+
+    settings.exceptions.customDurationMinutes = parsed;
+    customDurationError.textContent = "";
+    inputCustomDuration.value = String(parsed);
+    await save();
+  });
+
   toggleWordChallenge.addEventListener("change", async () => {
     if (!settings.exceptions.wordChallenge) settings.exceptions.wordChallenge = {};
     settings.exceptions.wordChallenge.enabled = toggleWordChallenge.checked;
+    await save();
+  });
+
+  inputWordRequiredCorrect.addEventListener("change", async () => {
+    if (!settings.exceptions.wordChallenge) settings.exceptions.wordChallenge = {};
+    settings.exceptions.wordChallenge.requiredCorrect = clampInteger(
+      inputWordRequiredCorrect.value,
+      WORD_CHALLENGE_DEFAULTS.requiredCorrect,
+      1,
+      10
+    );
+    inputWordRequiredCorrect.value = settings.exceptions.wordChallenge.requiredCorrect;
+    await save();
+  });
+
+  inputWordRewardMinutes.addEventListener("change", async () => {
+    if (!settings.exceptions.wordChallenge) settings.exceptions.wordChallenge = {};
+    settings.exceptions.wordChallenge.rewardMinutes = clampInteger(
+      inputWordRewardMinutes.value,
+      WORD_CHALLENGE_DEFAULTS.rewardMinutes,
+      1,
+      120
+    );
+    inputWordRewardMinutes.value = settings.exceptions.wordChallenge.rewardMinutes;
     await save();
   });
 
@@ -547,6 +596,12 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  function clampInteger(value, fallback, min, max) {
+    const n = Number.parseInt(value, 10);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(max, Math.max(min, n));
   }
 
   // ── Start ─────────────────────────────────────────────────────────────────

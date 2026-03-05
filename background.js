@@ -1,30 +1,18 @@
 // background.js — Service worker for URL Blocker extension
 
+importScripts("shared/settings.js");
+
 const BLOCKED_PAGE = chrome.runtime.getURL("blocked/blocked.html");
 
 let cachedRules = [];
 let cachedSettings = null;
 let cachedActiveExceptions = {};
 
-const DEFAULT_SETTINGS = {
-  extensionEnabled: true,
-  protection: {
-    enabled: false,
-    challengeType: "passcode",
-    passcodeHash: null,
-    mathDifficulty: "easy"
-  },
-  exceptions: {
-    enabled: false,
-    allowedDurations: [5, 15, 30, 60, 120]
-  }
-};
-
 // Load rules, settings, and active exceptions into memory cache
 async function loadCache() {
   const data = await chrome.storage.local.get(["rules", "settings", "activeExceptions"]);
   cachedRules = data.rules || [];
-  cachedSettings = data.settings || DEFAULT_SETTINGS;
+  cachedSettings = normalizeSettings(data.settings);
   cachedActiveExceptions = data.activeExceptions || {};
 }
 
@@ -36,7 +24,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
   let needsSync = false;
   if (changes.rules) { cachedRules = changes.rules.newValue || []; needsSync = true; }
-  if (changes.settings) { cachedSettings = changes.settings.newValue || DEFAULT_SETTINGS; needsSync = true; }
+  if (changes.settings) { cachedSettings = normalizeSettings(changes.settings.newValue); needsSync = true; }
   if (changes.activeExceptions) { cachedActiveExceptions = changes.activeExceptions.newValue || {}; needsSync = true; }
   if (needsSync) syncDNRRules();
 });
@@ -136,7 +124,7 @@ function ruleToDNRCondition(rule) {
 
 async function syncDNRRules() {
   if (!chrome.declarativeNetRequest?.updateDynamicRules) return;
-  const settings = cachedSettings || DEFAULT_SETTINGS;
+  const settings = cachedSettings || normalizeSettings(null);
   const now = Date.now();
 
   const excepted = new Set(
@@ -180,7 +168,7 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   // Skip our own blocked page
   if (url.startsWith(BLOCKED_PAGE)) return;
 
-  const settings = cachedSettings || DEFAULT_SETTINGS;
+  const settings = cachedSettings || normalizeSettings(null);
   if (!settings.extensionEnabled) return;
 
   const rule = findMatchingRule(url);
@@ -257,8 +245,8 @@ chrome.runtime.onInstalled.addListener(async () => {
   // Set defaults if first install
   const data = await chrome.storage.local.get("settings");
   if (!data.settings) {
-    await chrome.storage.local.set({ settings: DEFAULT_SETTINGS, rules: [], activeExceptions: {} });
-    cachedSettings = DEFAULT_SETTINGS;
+    await chrome.storage.local.set({ settings: getDefaultSettings(), rules: [], activeExceptions: {} });
+    cachedSettings = normalizeSettings(null);
     cachedRules = [];
     cachedActiveExceptions = {};
   }

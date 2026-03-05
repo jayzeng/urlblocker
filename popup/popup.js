@@ -38,7 +38,7 @@
   // ── Init ──────────────────────────────────────────────────────────────────
   async function init() {
     const data = await chrome.storage.local.get(["settings"]);
-    settings = data.settings || getDefaultSettings();
+    settings = normalizeSettings(data.settings);
 
     // Get current tab URL
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -61,18 +61,6 @@
     }
 
     render();
-  }
-
-  function getDefaultSettings() {
-    return {
-      extensionEnabled: true,
-      protection: {
-        enabled: false,
-        challengeType: "passcode",
-        passcodeHash: null,
-        mathDifficulty: "easy"
-      }
-    };
   }
 
   function render() {

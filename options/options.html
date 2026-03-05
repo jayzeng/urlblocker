@@ -97,22 +97,38 @@
             <label class="duration-check-item">
               <input type="checkbox" class="duration-check" data-minutes="30"> 30 min
             </label>
-            <label class="duration-check-item">
-              <input type="checkbox" class="duration-check" data-minutes="60"> 1 hour
-            </label>
-            <label class="duration-check-item">
-              <input type="checkbox" class="duration-check" data-minutes="120"> 2 hours
-            </label>
           </div>
           <div class="toggle-row">
             <div class="label-group">
+              <strong>Custom Duration (Minutes)</strong>
+              <small>Optional extra duration shown to children. Must be an integer.</small>
+            </div>
+            <input type="number" id="input-custom-duration" class="form-control" min="1" max="720" step="1" style="width:110px">
+          </div>
+          <div class="form-error" id="custom-duration-error"></div>
+          <div class="toggle-row">
+            <div class="label-group">
               <strong>Word Challenge Mode</strong>
-              <small>Let kids earn 5 minutes by spelling 2 words correctly — no parent needed.</small>
+              <small>Let kids earn time by spelling words correctly — no parent needed.</small>
             </div>
             <label class="toggle">
               <input type="checkbox" id="toggle-word-challenge">
               <span class="track"></span>
             </label>
+          </div>
+          <div class="toggle-row">
+            <div class="label-group">
+              <strong>Required Correct Spellings</strong>
+              <small>How many words in a row must be spelled correctly to earn time.</small>
+            </div>
+            <input type="number" id="input-word-required-correct" class="form-control" min="1" max="10" step="1" style="width:90px">
+          </div>
+          <div class="toggle-row">
+            <div class="label-group">
+              <strong>Word Challenge Reward (Minutes)</strong>
+              <small>How many minutes to grant when the spelling streak is completed.</small>
+            </div>
+            <input type="number" id="input-word-reward-minutes" class="form-control" min="1" max="120" step="1" style="width:90px">
           </div>
           <p class="exc-note">Challenge uses the same passcode / math settings as Protection Mode.</p>
           <div class="toggle-row" style="border:none;padding-bottom:0">
@@ -233,6 +249,7 @@
     </div>
   </dialog>
 
+  <script src="../shared/settings.js"></script>
   <script src="../shared/utils.js"></script>
   <script src="options.js"></script>
 </body>

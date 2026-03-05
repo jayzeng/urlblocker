@@ -37,9 +37,13 @@
 
   // ── Load settings for exception flow ─────────────────────────────────────
   const data = await chrome.storage.local.get("settings");
-  const settings = data.settings || {};
+  const settings = normalizeSettings(data.settings);
   const prot = settings.protection || {};
-  const exc  = settings.exceptions || { enabled: false, allowedDurations: [15, 30, 60, 120] };
+  const exc  = settings.exceptions || { enabled: false, allowedDurations: [5, 15, 30] };
+  const customDurationMinutes = exc.customDurationMinutes;
+  const wcSettings = exc.wordChallenge || {};
+  const wcRequiredCorrect = wcSettings.requiredCorrect || 3;
+  const wcRewardMinutes = wcSettings.rewardMinutes || 5;
 
   if (!exc.enabled || !ruleId) return;
 
@@ -69,7 +73,11 @@
 
   // Step 1 → 2: show duration picker
   document.getElementById("btn-request-exception").addEventListener("click", () => {
-    const durations = exc.allowedDurations || [15, 30, 60, 120];
+    const durations = [...(exc.allowedDurations || [5, 15, 30])];
+    if (Number.isInteger(customDurationMinutes) && customDurationMinutes > 0 && !durations.includes(customDurationMinutes)) {
+      durations.push(customDurationMinutes);
+    }
+    durations.sort((a, b) => a - b);
 
     durationBtns.innerHTML = "";
     durations.forEach(min => {
@@ -95,8 +103,25 @@
 
   // Word challenge entry
   if (exc.wordChallenge && exc.wordChallenge.enabled) {
+    const btnWordChallenge = document.getElementById("btn-word-challenge");
+    const earnHint = document.getElementById("wc-earn-hint");
+    const progressText = document.getElementById("wc-progress-text");
+    const starsWrap = document.getElementById("wc-progress-stars");
+
+    btnWordChallenge.textContent = `🎓 Earn ${formatMinutesLabel(wcRewardMinutes)}`;
+    earnHint.textContent = `Spell ${wcRequiredCorrect} word${wcRequiredCorrect === 1 ? "" : "s"} correctly — no parent needed!`;
+    progressText.textContent = `Spell ${wcRequiredCorrect} in a row → earn ${wcRewardMinutes} minute${wcRewardMinutes === 1 ? "" : "s"}`;
+    starsWrap.innerHTML = "";
+    for (let i = 0; i < wcRequiredCorrect; i++) {
+      const star = document.createElement("span");
+      star.className = "wc-star wc-star-dim";
+      star.dataset.starIndex = String(i + 1);
+      star.textContent = "⭐";
+      starsWrap.appendChild(star);
+    }
+
     document.getElementById("word-challenge-entry").style.display = "";
-    document.getElementById("btn-word-challenge").addEventListener("click", () => {
+    btnWordChallenge.addEventListener("click", () => {
       wcStreak = 0;
       showStep("exc-step-word");
       renderWCWord();
@@ -423,12 +448,10 @@
   }
 
   function wcUpdateStars() {
-    const s1 = document.getElementById("wc-star-1");
-    const s2 = document.getElementById("wc-star-2");
-    const s3 = document.getElementById("wc-star-3");
-    if (s1) s1.className = `wc-star ${wcStreak >= 1 ? "wc-star-lit" : "wc-star-dim"}`;
-    if (s2) s2.className = `wc-star ${wcStreak >= 2 ? "wc-star-lit" : "wc-star-dim"}`;
-    if (s3) s3.className = `wc-star ${wcStreak >= 3 ? "wc-star-lit" : "wc-star-dim"}`;
+    const stars = document.querySelectorAll("#wc-progress-stars .wc-star");
+    stars.forEach((star, index) => {
+      star.className = `wc-star ${wcStreak >= index + 1 ? "wc-star-lit" : "wc-star-dim"}`;
+    });
   }
 
   function renderWCWord() {
@@ -556,11 +579,11 @@
       feedbackEl.className = "wc-feedback wc-correct";
       wcStreak++;
       wcUpdateStars();
-      if (wcStreak >= 3) {
-        feedbackEl.textContent = "🎉 Amazing! You earned 5 minutes!";
+      if (wcStreak >= wcRequiredCorrect) {
+        feedbackEl.textContent = `🎉 Amazing! You earned ${wcRewardMinutes} minute${wcRewardMinutes === 1 ? "" : "s"}!`;
         setTimeout(async () => {
           wcDetachKeyboard();
-          selectedDurationMs = 5 * 60 * 1000;
+          selectedDurationMs = wcRewardMinutes * 60 * 1000;
           await grantException();
         }, 1200);
       } else {
@@ -602,6 +625,10 @@
     if (min < 60) return `${min} min`;
     const hr = min / 60;
     return hr === 1 ? "1 hour" : `${hr} hours`;
+  }
+
+  function formatMinutesLabel(minutes) {
+    return `${minutes} Minute${minutes === 1 ? "" : "s"}`;
   }
 
   function extractDomain(url) {

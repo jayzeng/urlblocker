@@ -56,7 +56,7 @@
           <div id="word-challenge-entry" style="display:none">
             <div class="wc-or">— or —</div>
             <button class="btn btn-word-challenge" id="btn-word-challenge">🎓 Earn 5 Minutes</button>
-            <p class="wc-earn-hint">Spell 2 words correctly — no parent needed!</p>
+            <p class="wc-earn-hint" id="wc-earn-hint">Spell 3 words correctly — no parent needed!</p>
           </div>
         </div>
 
@@ -76,11 +76,9 @@
         <!-- Step Word Challenge -->
         <div id="exc-step-word" style="display:none">
           <p class="exc-label">🎓 Spelling Challenge</p>
-          <div class="wc-progress">
-            <span id="wc-star-1" class="wc-star wc-star-dim">⭐</span>
-            <span id="wc-star-2" class="wc-star wc-star-dim">⭐</span>
-            <span id="wc-star-3" class="wc-star wc-star-dim">⭐</span>
-            <span class="wc-progress-text">Spell 3 in a row → earn 5 minutes</span>
+          <div class="wc-progress" id="wc-progress">
+            <span id="wc-progress-stars"></span>
+            <span class="wc-progress-text" id="wc-progress-text">Spell 3 in a row → earn 5 minutes</span>
           </div>
           <div id="wc-game"></div>
           <button class="btn btn-ghost btn-sm exc-back-btn" id="wc-back">← Back</button>
@@ -97,6 +95,7 @@
     </div>
   </div>
 
+  <script src="../shared/settings.js"></script>
   <script src="../shared/utils.js"></script>
   <script src="../shared/db.js"></script>
   <script src="blocked.js"></script>
