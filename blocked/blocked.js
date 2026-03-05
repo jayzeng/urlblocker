@@ -100,9 +100,11 @@
       wcStreak = 0;
       showStep("exc-step-word");
       renderWCWord();
+      wcAttachKeyboard();
     });
     document.getElementById("wc-back").addEventListener("click", () => {
       wcStreak = 0;
+      wcDetachKeyboard();
       showStep("exc-step-request");
     });
   }
@@ -313,6 +315,32 @@
   let wcSpeakHintShown = false;
   let wcKeysBeforeSpeak = 0;
   const wcSpeechSupported = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+  let wcKeyboardListener = null;
+
+  function wcAttachKeyboard() {
+    wcDetachKeyboard();
+    wcKeyboardListener = (e) => {
+      // If keys are disabled (answer already checked), only allow Enter on the Got it button
+      const keysDisabled = document.querySelector(".wc-key")?.disabled;
+      if (keysDisabled) {
+        if (e.key === "Enter" || e.key === " ") {
+          const gotItBtn = document.querySelector(".wc-got-it");
+          if (gotItBtn) { e.preventDefault(); gotItBtn.click(); }
+        }
+        return;
+      }
+      if (e.key === "Backspace") { e.preventDefault(); wcHandleBackspace(); return; }
+      if (/^[a-zA-Z]$/.test(e.key)) { e.preventDefault(); wcHandleKey(e.key.toLowerCase()); }
+    };
+    document.addEventListener("keydown", wcKeyboardListener);
+  }
+
+  function wcDetachKeyboard() {
+    if (wcKeyboardListener) {
+      document.removeEventListener("keydown", wcKeyboardListener);
+      wcKeyboardListener = null;
+    }
+  }
 
   function wcStopSpeaking() {
     if (!wcSpeechSupported) return;
@@ -531,6 +559,7 @@
       if (wcStreak >= 3) {
         feedbackEl.textContent = "🎉 Amazing! You earned 5 minutes!";
         setTimeout(async () => {
+          wcDetachKeyboard();
           selectedDurationMs = 5 * 60 * 1000;
           await grantException();
         }, 1200);
@@ -539,11 +568,31 @@
       }
     } else {
       wordEl.classList.add("wc-word-wrong");
-      feedbackEl.textContent = `✗ Not quite! It was "${word.toUpperCase()}". Try a new word!`;
-      feedbackEl.className = "wc-feedback wc-wrong";
       wcStreak = 0;
       wcUpdateStars();
-      setTimeout(() => renderWCWord(), 1100);
+
+      // Reveal letters: green if the kid got it right, red if wrong
+      wordEl.querySelectorAll(".wc-blank").forEach(span => {
+        const idx = parseInt(span.dataset.idx, 10);
+        span.textContent = word[idx].toUpperCase();
+        span.classList.add("wc-filled");
+        if (wcFilled[idx] === word[idx]) {
+          span.classList.add("wc-revealed-correct");
+        } else {
+          span.classList.add("wc-revealed-wrong");
+        }
+      });
+
+      feedbackEl.innerHTML = `<span>✗ The correct spelling is above.</span>`;
+      feedbackEl.className = "wc-feedback wc-wrong";
+
+      // Require explicit acknowledgement — no auto-advance
+      const gotItBtn = document.createElement("button");
+      gotItBtn.className = "btn btn-secondary wc-got-it";
+      gotItBtn.type = "button";
+      gotItBtn.textContent = "Got it → Next word";
+      gotItBtn.addEventListener("click", renderWCWord);
+      feedbackEl.appendChild(gotItBtn);
     }
   }
 
