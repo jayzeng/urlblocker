@@ -1,10 +1,17 @@
 {
   "manifest_version": 3,
   "name": "URL Blocker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Block navigation to URLs matching user-defined rules with optional protection mode.",
-  "permissions": ["storage", "tabs", "webNavigation", "declarativeNetRequest"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "storage",
+    "tabs",
+    "webNavigation",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "background": {
     "service_worker": "background.js"
   },
@@ -27,15 +34,24 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["blocked/blocked.html", "dashboard/dashboard.html"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "blocked/blocked.html",
+        "dashboard/dashboard.html"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }
