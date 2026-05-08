@@ -7,6 +7,7 @@ const BLOCKED_PAGE = chrome.runtime.getURL("blocked/blocked.html");
 let cachedRules = [];
 let cachedSettings = null;
 let cachedActiveExceptions = {};
+let cacheReady = null;
 
 // Load rules, settings, and active exceptions into memory cache
 async function loadCache() {
@@ -16,8 +17,26 @@ async function loadCache() {
   cachedActiveExceptions = data.activeExceptions || {};
 }
 
+function loadCacheAndSync() {
+  cacheReady = loadCache()
+    .then(() => syncDNRRules())
+    .catch((error) => {
+      console.warn("URL Blocker failed to load cache:", error);
+      cacheReady = null;
+    });
+  return cacheReady;
+}
+
+async function ensureCacheLoaded() {
+  if (!cacheReady) {
+    await loadCacheAndSync();
+    return;
+  }
+  await cacheReady;
+}
+
 // Initialize on service worker start
-loadCache().then(syncDNRRules);
+loadCacheAndSync();
 
 // Keep cache fresh when storage changes
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -95,31 +114,144 @@ function hasActiveException(ruleId) {
   return exc && exc.expiresAt > Date.now();
 }
 
-// --- declarativeNetRequest: block embedded/iframe content from blocked domains ---
+function escapeRegexLiteral(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function shouldIgnoreUrl(url) {
+  if (!url) return true;
+
+  return (
+    url.startsWith("chrome://") ||
+    url.startsWith("chrome-extension://") ||
+    url.startsWith("about:") ||
+    url.startsWith("data:") ||
+    url.startsWith("file://") ||
+    url.startsWith(BLOCKED_PAGE)
+  );
+}
+
+function getBlockedUrl(url, rule) {
+  const blockedUrl = new URL(BLOCKED_PAGE);
+  blockedUrl.searchParams.set("url", url);
+  blockedUrl.searchParams.set("ruleId", rule.id);
+  blockedUrl.searchParams.set("type", rule.type);
+  blockedUrl.searchParams.set("pattern", rule.pattern);
+  if (rule.label) blockedUrl.searchParams.set("label", rule.label);
+  return blockedUrl.toString();
+}
+
+async function enforceBlockedUrl(tabId, url) {
+  if (tabId < 0 || shouldIgnoreUrl(url)) return;
+
+  await ensureCacheLoaded();
+
+  const settings = cachedSettings || normalizeSettings(null);
+  if (!settings.extensionEnabled) return;
+
+  const rule = findMatchingRule(url);
+  if (!rule) return;
+
+  // Skip blocking if a valid exception exists for this rule
+  if (hasActiveException(rule.id)) return;
+
+  try {
+    await chrome.tabs.update(tabId, { url: getBlockedUrl(url, rule) });
+  } catch (error) {
+    console.warn("URL Blocker failed to redirect blocked tab:", error);
+  }
+}
+
+// --- declarativeNetRequest: request-layer fallback blocking ---
+
+const EMBEDDED_RESOURCE_TYPES = ["sub_frame", "media", "object"];
 
 function ruleToDNRCondition(rule) {
-  const subframeTypes = ["sub_frame", "media", "object"];
   switch (rule.type) {
     case "domain": {
       const host = rule.pattern.toLowerCase().trim().replace(/^www\./, "");
-      return { requestDomains: [host, "www." + host], resourceTypes: subframeTypes };
+      return { requestDomains: [host, "www." + host], resourceTypes: EMBEDDED_RESOURCE_TYPES };
     }
     case "regex": {
       try { new RegExp(rule.pattern); } catch { return null; }
-      return { regexFilter: rule.pattern, isUrlFilterCaseSensitive: false, resourceTypes: subframeTypes };
+      return { regexFilter: rule.pattern, isUrlFilterCaseSensitive: false, resourceTypes: EMBEDDED_RESOURCE_TYPES };
     }
     case "keyword": {
       // Escape regex metacharacters for literal substring matching
-      const escaped = rule.pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
-      return { regexFilter: escaped, isUrlFilterCaseSensitive: false, resourceTypes: subframeTypes };
+      const escaped = escapeRegexLiteral(rule.pattern);
+      return { regexFilter: escaped, isUrlFilterCaseSensitive: false, resourceTypes: EMBEDDED_RESOURCE_TYPES };
     }
     case "exact": {
       try {
-        return { urlFilter: `|${new URL(rule.pattern).href}|`, resourceTypes: subframeTypes };
+        return { urlFilter: `|${new URL(rule.pattern).href}|`, resourceTypes: EMBEDDED_RESOURCE_TYPES };
       } catch { return null; }
     }
     default: return null;
   }
+}
+
+function ruleToDNRMainFrameCondition(rule) {
+  switch (rule.type) {
+    case "domain": {
+      const host = rule.pattern.toLowerCase().trim().replace(/^www\./, "");
+      if (!host) return null;
+      return {
+        regexFilter: `^https?://([^/?#]+\\.)?${escapeRegexLiteral(host)}(:[0-9]+)?([/?#].*)?$`,
+        isUrlFilterCaseSensitive: false,
+        resourceTypes: ["main_frame"]
+      };
+    }
+    case "regex": {
+      try { new RegExp(rule.pattern); } catch { return null; }
+      return {
+        regexFilter: rule.pattern,
+        isUrlFilterCaseSensitive: false,
+        resourceTypes: ["main_frame"]
+      };
+    }
+    case "keyword": {
+      if (!rule.pattern) return null;
+      return {
+        regexFilter: `^.*${escapeRegexLiteral(rule.pattern)}.*$`,
+        isUrlFilterCaseSensitive: false,
+        resourceTypes: ["main_frame"]
+      };
+    }
+    case "exact": {
+      try {
+        return {
+          regexFilter: `^${escapeRegexLiteral(new URL(rule.pattern).href)}$`,
+          isUrlFilterCaseSensitive: true,
+          resourceTypes: ["main_frame"]
+        };
+      } catch { return null; }
+    }
+    default: return null;
+  }
+}
+
+function ruleToDNRMainFrameRedirect(rule, id) {
+  const condition = ruleToDNRMainFrameCondition(rule);
+  if (!condition) return null;
+
+  const params = new URLSearchParams();
+  params.set("source", "dnr");
+  params.set("ruleId", rule.id);
+  params.set("type", rule.type);
+  params.set("pattern", rule.pattern);
+  if (rule.label) params.set("label", rule.label);
+
+  return {
+    id,
+    priority: 2,
+    action: {
+      type: "redirect",
+      redirect: {
+        regexSubstitution: `${BLOCKED_PAGE}?${params.toString()}#\\0`
+      }
+    },
+    condition
+  };
 }
 
 async function syncDNRRules() {
@@ -138,6 +270,12 @@ async function syncDNRRules() {
   if (settings.extensionEnabled) {
     for (const rule of cachedRules) {
       if (!rule.enabled || excepted.has(rule.id)) continue;
+      const mainFrameRule = ruleToDNRMainFrameRedirect(rule, dnrId);
+      if (mainFrameRule) {
+        newRules.push(mainFrameRule);
+        dnrId++;
+      }
+
       const condition = ruleToDNRCondition(rule);
       if (condition) newRules.push({ id: dnrId++, priority: 1, action: { type: "block" }, condition });
     }
@@ -150,42 +288,24 @@ async function syncDNRRules() {
   });
 }
 
-// Intercept top-level navigations only (sub-frames handled by declarativeNetRequest)
+// Intercept top-level navigations in the service worker; DNR also covers them
+// as a request-layer fallback for app/external launch paths.
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   if (details.frameId !== 0 || details.tabId < 0) return;
 
-  const url = details.url;
+  enforceBlockedUrl(details.tabId, details.url);
+});
 
-  // Skip internal browser URLs
-  if (
-    url.startsWith("chrome://") ||
-    url.startsWith("chrome-extension://") ||
-    url.startsWith("about:") ||
-    url.startsWith("data:") ||
-    url.startsWith("file://")
-  ) return;
+// Re-check tab URLs that may have been created or activated by external apps.
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.url) enforceBlockedUrl(tabId, changeInfo.url);
+});
 
-  // Skip our own blocked page
-  if (url.startsWith(BLOCKED_PAGE)) return;
-
-  const settings = cachedSettings || normalizeSettings(null);
-  if (!settings.extensionEnabled) return;
-
-  const rule = findMatchingRule(url);
-  if (!rule) return;
-
-  // Skip blocking if a valid exception exists for this rule
-  if (hasActiveException(rule.id)) return;
-
-  // Build blocked page URL with context
-  const blockedUrl = new URL(BLOCKED_PAGE);
-  blockedUrl.searchParams.set("url", url);
-  blockedUrl.searchParams.set("ruleId", rule.id);
-  blockedUrl.searchParams.set("type", rule.type);
-  blockedUrl.searchParams.set("pattern", rule.pattern);
-  if (rule.label) blockedUrl.searchParams.set("label", rule.label);
-
-  chrome.tabs.update(details.tabId, { url: blockedUrl.toString() });
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  chrome.tabs.get(tabId, (tab) => {
+    if (chrome.runtime.lastError || !tab?.url) return;
+    enforceBlockedUrl(tabId, tab.url);
+  });
 });
 
 // Handle messages from blocked page and other extension pages
@@ -239,9 +359,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 });
 
 // Refresh cache when service worker wakes
-chrome.runtime.onStartup.addListener(() => loadCache().then(syncDNRRules));
+chrome.runtime.onStartup.addListener(loadCacheAndSync);
 chrome.runtime.onInstalled.addListener(async () => {
-  await loadCache();
+  await ensureCacheLoaded();
   // Set defaults if first install
   const data = await chrome.storage.local.get("settings");
   if (!data.settings) {

@@ -2,7 +2,10 @@
 
 (async function () {
   const params = new URLSearchParams(location.search);
-  const blockedUrl    = params.get("url")     || "";
+  const dnrBlockedUrl = params.get("source") === "dnr" && location.hash.length > 1
+    ? location.hash.slice(1)
+    : "";
+  const blockedUrl    = params.get("url")     || dnrBlockedUrl;
   const ruleType      = params.get("type")    || "";
   const rulePattern   = params.get("pattern") || "";
   const ruleLabel     = params.get("label")   || "";

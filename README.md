@@ -58,6 +58,16 @@ Parents can review all granted exceptions — domain, duration, timestamp, and c
 - Enable Exception Requests and choose which durations to offer
 - Open the Exception History dashboard
 
+## Demo / Regression Page
+
+Open `demo/index.html` from a local HTTP server to verify the blocking paths that are easy to miss:
+
+```
+python3 -m http.server 5174
+```
+
+Then visit `http://127.0.0.1:5174/demo/` and add the demo rules shown on that page.
+
 ---
 
 ## Release Workflow
