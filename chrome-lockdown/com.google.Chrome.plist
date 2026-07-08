@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Lock the kid out of extension management and experiment pages -->
+	<key>URLBlocklist</key>
+	<array>
+		<string>chrome://extensions</string>
+		<string>chrome://extensions/*</string>
+		<string>chrome://flags</string>
+		<string>chrome://flags/*</string>
+	</array>
+
+	<!-- 1 = incognito disabled (0 = available, 2 = forced) -->
+	<key>IncognitoModeAvailability</key>
+	<integer>1</integer>
+
+	<!-- No guest browsing (guest sessions have no extensions) -->
+	<key>BrowserGuestModeEnabled</key>
+	<false/>
+
+	<!-- No creating new Chrome profiles (new profiles have no extensions) -->
+	<key>BrowserAddPersonEnabled</key>
+	<false/>
+
+	<!-- 2 = DevTools disallowed entirely for this user -->
+	<key>DeveloperToolsAvailability</key>
+	<integer>2</integer>
+
+	<!--
+	STEP 3 (later): once the extension is published to the Chrome Web Store
+	(unlisted is fine), uncomment this and fill in the real extension ID.
+	force_installed removes the Remove/Disable options everywhere in Chrome.
+
+	<key>ExtensionSettings</key>
+	<dict>
+		<key>YOUR_EXTENSION_ID_HERE</key>
+		<dict>
+			<key>installation_mode</key>
+			<string>force_installed</string>
+			<key>update_url</key>
+			<string>https://clients2.google.com/service/update2/crx</string>
+		</dict>
+	</dict>
+	-->
+
+	<!--
+	OPTIONAL: full allowlist mode - block everything except listed sites.
+	This replaces most of what the extension does, so only enable it if you
+	want lockdown mode instead of the extension's blocklist + timed exceptions.
+
+	<key>URLBlocklist</key>
+	<array>
+		<string>*</string>
+	</array>
+	<key>URLAllowlist</key>
+	<array>
+		<string>khanacademy.org</string>
+		<string>wikipedia.org</string>
+	</array>
+	-->
+</dict>
+</plist>
